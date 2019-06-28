@@ -54,3 +54,6 @@ mitsuba.*.log
 *.avi
 *.m~
 
+# Visual studio code related folders
+.vscode/
+
