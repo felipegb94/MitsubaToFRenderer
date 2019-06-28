@@ -6,8 +6,16 @@
 # Get basic packages
 sudo apt-get update
 sudo apt-get upgrade
-sudo apt-get install subversion git-core mercurial keychain openssh-client openssh-server g++ g++-multilib build-essential zip unzip p7zip-full python2.7 python-dev apt-file vim scons qt4-dev-tools libpng12-dev libjpeg8 libjpeg8-dev libpng3 libilmbase-dev libxerces-c-dev libglewmx1.6-dev libxxf86vm-dev libbz2-dev htop zlib1g-dev aptitude dkms gedit-plugins gedit-latex-plugin ntp gnome-terminal gimp gimp-ufraw ufraw ufraw-batch dcraw valgrind linux-tools-common smartmontools libapache2-mod-perl2 gnome-disk-utility libapache2-svn subversion-tools gnome-system-tools unrar xml-twig-tools linux-headers-$(uname -r) rsync inkscape irssi mutt s3cmd meshlab openexr libopenexr-dev openexr-viewers libgnome2-bin gparted ubuntu-restricted-extras uml-utilities gpick gnome-color-manager libfftw3-3 libfftw3-dev libboost1.58-all-dev pkg-config
- 
+# For ubuntu 18.04 libpng12-dev was dropped so we need to install libpng-dev instead
+# For ubuntu 18.04 libboost1.58-all-dev was not available so you have to download and install manually
+## If you run into a compilation error regarding the bind function of boost, that might mean that you are using a version of boost that is too new.
+# For ubuntu 18.04 libpng3 is not available (need to test if only having libpng-dev works)
+# For ubuntu 18.04 libapache2-svn is now called libapache2-mod-svn
+# Mitsuba needs OpenGL to be installed so we need to add opengl info below. 
+# Needed to also install curl because of command used in future steps
+sudo apt-get install subversion git-core mercurial keychain openssh-client openssh-server g++ g++-multilib build-essential zip unzip p7zip-full python2.7 python-dev apt-file vim scons qt4-dev-tools libpng12-dev libjpeg8 libjpeg8-dev libpng3 libilmbase-dev libxerces-c-dev libglewmx1.6-dev libxxf86vm-dev libbz2-dev htop zlib1g-dev aptitude dkms gedit-plugins gedit-latex-plugin ntp gnome-terminal gimp gimp-ufraw ufraw ufraw-batch dcraw valgrind linux-tools-common smartmontools libapache2-mod-perl2 gnome-disk-utility libapache2-svn subversion-tools gnome-system-tools unrar xml-twig-tools linux-headers-$(uname -r) rsync inkscape irssi mutt s3cmd meshlab openexr libopenexr-dev openexr-viewers libgnome2-bin gparted ubuntu-restricted-extras uml-utilities gpick gnome-color-manager libfftw3-3 libfftw3-dev libboost1.58-all-dev pkg-config curl
+
+
 # Preparation for installations
 mkdir ~/Downloads
 mkdir ~/install_dirs
@@ -32,6 +40,17 @@ cd
 git clone https://github.com/cmu-ci-lab/MitsubaToFRenderer.git 
 cd MitsubaToFRenderer 
 scons --clean
+## In Ubuntu 18.04 At this point when trying to compile I got the following two errors:
+##### - include/mitsuba/core/constants.h:58:32: error: unable to find numeric literal operator ‘operator""f’
+##### #define RCPOVERFLOW_FLT   0x1p-128f
+##### include/mitsuba/core/constants.h:58:27: error: exponent has no digits
+#####  #define RCPOVERFLOW_FLT   0x1p-128f
+## The compiler suggested to use the following CXXFLAG -std=gnu++11 which can be changed in the config.py
+## After changing that flag the compilation continues to fail because:
+##### /usr/bin/ld: cannot find -lGL
+## After installing opengl and reinstalling libglewmx I then get some errors regarding the PLY parser
+## The following Mitsuba thread explains the issue and a workaround: https://github.com/mitsuba-renderer/mitsuba/issues/7
+## At this point I was able to succesfully compile
 scons
 cd
 
@@ -42,6 +61,14 @@ source /etc/environment
 echo "<INST_PATH>/MitsubaToFRenderer/dist" | sudo tee /etc/ld.so.conf.d/mitsuba.conf > /dev/null
 sudo ldconfig
  
+# Add the following lines to your ~/.bashrc file so that you can run mitsuba from anywhere.
+# Make sure to replace the python version with your own.
+#   export MITSUBA_PYVER=2.7
+#   export MITSUBA_DIR=/home/user/repos/MitsubaToFRenderer
+#   source $MITSUBA_DIR/setpath.sh
+# Source the bashrc file
+source ~/.bashrc
+
 # Reboot for changes to take effect
 sudo reboot
 

@@ -1,3 +1,7 @@
+// The following line is needed to deal with some ply parser errors discussed
+// here: https://github.com/mitsuba-renderer/mitsuba/issues/7
+#define ADT_WORKAROUND 1
+
 #ifndef PLY_PLY_PARSER_HPP_INCLUDED
 #define PLY_PLY_PARSER_HPP_INCLUDED
 
