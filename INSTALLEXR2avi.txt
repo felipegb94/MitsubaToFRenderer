@@ -7,3 +7,5 @@ vi (or nano) matlab.mk
 cd <MitsubaToFRenderer>/mfiles/exr
 make
 exr2avi(filename, options) from matlab command window 
+
+# To load and view exr files in python you will need to install openexr. You can install it by running `pip install openexr`. Make sure to install it through pip and not through anaconda. Anaconda did not work for me.
