@@ -188,6 +188,21 @@ public:
 		return m_kdtree->rayIntersect(ray, its);
 	}
 
+	/* comment appropriately*/
+	inline bool ellipsoidIntersectAll(Ellipsoid* e, Float &value, Ray &ray, Intersection &its, ref<Sampler> sampler) const{
+		if(e->isDegenerate())
+			return false;
+		return m_kdtree->ellipsoidIntersect(e, value, ray, its, sampler);
+	}
+
+	inline size_t getPrimitiveCount() const{
+		return m_kdtree->getPrimitiveCount();
+	}
+	inline size_t getMaxDepth() const{
+		return m_kdtree->getMaxDepth();
+	}
+
+
 	/**
 	 * \brief Intersect a ray against all primitives stored in the scene
 	 * and return the traveled distance and intersected shape

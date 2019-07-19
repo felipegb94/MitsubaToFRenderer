@@ -52,6 +52,10 @@ public:
 
 		/// Bounce light transport (decomposition by bounce order)
 		EBounce                   = 0x02,
+
+		/// Transient light transport (decomposition by pathlength with elliptic constraints)
+		ETransientEllipse		  = 0x03,
+
 	};
 
 	/// Ignoring the crop window, return the resolution of the underlying sensor
@@ -82,9 +86,19 @@ public:
 	virtual void develop(const Scene *scene, Float renderTime) = 0;
 
 	inline EDecompositionType getDecompositionType() const {return m_decompositionType; }
+	inline bool combineBDPTAndElliptic() const {return m_combineBDPTAndElliptic; }
 	inline Float getDecompositionMinBound() const {return m_decompositionMinBound; }
 	inline Float getDecompositionMaxBound() const {return m_decompositionMaxBound; }
 	inline Float getDecompositionBinWidth() const {return m_decompositionBinWidth; }
+	inline bool isldSampling() const {return m_isldSampling; }
+
+	inline bool isAdaptive() const {return m_isAdaptive; }
+	inline Float getAdapMaxError() const {return m_adapMaxError; }
+	inline Float getAdapQuantile() const {return m_adapQuantile; }
+	inline Float getAdapPValue() const {return m_adapPValue; }
+	inline Float getAdapAverageLuminance() const {return m_adapAverageLuminance; }
+	inline int getAdapMaxSampleFactor() const {return m_adapMaxSampleFactor; }
+
 	inline size_t getFrames() const {return m_frames; }
 	inline size_t getSubSamples() const {return m_subSamples; }
 
@@ -166,11 +180,18 @@ protected:
 protected:
 // For BDPT decomposition renderer:
 	EDecompositionType m_decompositionType;
+	bool m_combineBDPTAndElliptic;
 	Float m_decompositionMinBound;
 	Float m_decompositionMaxBound;
 	Float m_decompositionBinWidth;
+	bool m_isldSampling;
 	size_t m_frames;
 	size_t m_subSamples;
+
+	//FIXME: Probably m_adap_quantile is not needed to be declared here
+	bool m_isAdaptive;
+	Float m_adapMaxError, m_adapQuantile, m_adapPValue, m_adapAverageLuminance;
+	int m_adapMaxSampleFactor;
 
 	// For special case of ToF Renderer
 	ref<PathLengthSampler> m_pathLengthSampler;

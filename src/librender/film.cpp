@@ -19,6 +19,7 @@
 #include <mitsuba/render/film.h>
 #include <mitsuba/core/plugin.h>
 #include <boost/algorithm/string.hpp>
+#include <boost/math/distributions/normal.hpp>
 
 MTS_NAMESPACE_BEGIN
 
@@ -62,20 +63,44 @@ Film::Film(const Properties &props)
 		m_decompositionType = ETransient;
 	} else if (decompositionType == "bounce") {
 		m_decompositionType = EBounce;
+	} else if (decompositionType == "transientellipse") {
+		m_decompositionType = ETransientEllipse;
 	} else {
 		Log(EError, "The \"decomposition\" parameter must be equal to"
-			"either \"none\", \"transient\", or \"bounce\"!");
+			"either \"none\", \"transient\", or \"bounce\", or \"transientEllipse\"!");
 	}
-
+	m_combineBDPTAndElliptic= props.getBoolean("combinesamplings", false);
+	if(m_combineBDPTAndElliptic && m_decompositionType != ETransientEllipse){
+		SLog(EError, "Combining samplings (BDPT and Elliptic) is supported only if decomposition in TransientEllipse");
+	}
 	m_decompositionMinBound = props.getFloat("minBound", 0.0f);
 	m_decompositionMaxBound = props.getFloat("maxBound", 0.0f);
 	m_decompositionBinWidth = props.getFloat("binWidth", 1.0f);
+	m_isldSampling 			= props.getBoolean("ldSampling", false);
+
+
+	//Adaptive sampling
+	m_isAdaptive 			= props.getBoolean("adapSampling", false);
+	if(m_isAdaptive && m_isldSampling)
+		Log(EError, "Both ldSampling and Adaptive sampling cannot be enabled simultaneously");
+
+	m_adapMaxError 			= props.getFloat("adapMaxError", 0.05f);
+	m_adapPValue 			= props.getFloat("adapPValue", 0.05f);
+	boost::math::normal dist(0, 1);
+	m_adapQuantile = (Float) boost::math::quantile(dist, 1-m_adapPValue/2);
+	m_adapMaxSampleFactor 	= props.getInteger("adapMaxSampleFactor", 8);
+
 	m_frames = ceil((m_decompositionMaxBound-m_decompositionMinBound)/m_decompositionBinWidth);
+	m_subSamples = props.getSize("subSamples", 1);
 
 	m_pathLengthSampler = new PathLengthSampler(props);
-	if( m_decompositionType == ESteadyState || (m_decompositionType == ETransient && m_pathLengthSampler->getModulationType()!= PathLengthSampler::ENone)){
+	if( m_decompositionType == ESteadyState || ((m_decompositionType == ETransient || m_decompositionType == ETransientEllipse) && m_pathLengthSampler->getModulationType()!= PathLengthSampler::ENone)){
 		m_frames = 1;
 	}
+	if((m_isldSampling || m_isAdaptive) &&
+	  (m_decompositionType != ETransientEllipse || m_pathLengthSampler->getModulationType() != PathLengthSampler::ENone))
+		SLog(EError, "ld sampling and adaptive sampling for transient can only be enabled for Transient Ellipse and only when there is no modulation type");
+
 
 	m_forceBounces 	= props.getBoolean("forceBounce", false);
 	m_sBounces  	= props.getInteger("sBounce", 0);
@@ -90,10 +115,12 @@ Film::Film(Stream *stream, InstanceManager *manager)
 	m_cropSize = Vector2i(stream);
 	m_highQualityEdges = stream->readBool();
 	m_decompositionType = (EDecompositionType) stream->readUInt();
+	m_combineBDPTAndElliptic= stream->readBool();
 	m_decompositionMinBound = stream->readFloat();
 	m_decompositionMaxBound = stream->readFloat();
 	m_decompositionBinWidth = stream->readFloat();
 	m_frames = stream->readSize();
+	m_subSamples = stream->readSize();
 	m_forceBounces = stream->readBool();
 	m_sBounces = stream->readUInt();
 	m_tBounces = stream->readUInt();
@@ -110,10 +137,12 @@ void Film::serialize(Stream *stream, InstanceManager *manager) const {
 	m_cropSize.serialize(stream);
 	stream->writeBool(m_highQualityEdges);
 	stream->writeUInt(m_decompositionType);
+	stream->writeBool(m_combineBDPTAndElliptic);
 	stream->writeFloat(m_decompositionMinBound);
 	stream->writeFloat(m_decompositionMaxBound);
 	stream->writeFloat(m_decompositionBinWidth);
 	stream->writeSize(m_frames);
+	stream->writeSize(m_subSamples);
 	stream->writeBool(m_forceBounces);
 	stream->writeUInt(m_sBounces);
 	stream->writeUInt(m_tBounces);

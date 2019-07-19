@@ -21,6 +21,8 @@
 #define __MITSUBA_BIDIR_VERTEX_H_
 
 #include <mitsuba/bidir/common.h>
+#include <../src/integrators/bdpt/bdpt_wr.h>
+
 
 MTS_NAMESPACE_BEGIN
 
@@ -233,6 +235,26 @@ struct MTS_EXPORT_BIDIR PathVertex {
 	 *     endpoint and any paths generated starting from there.
 	 */
 	void makeEndpoint(const Scene *scene, Float time, ETransportMode mode);
+
+	/**
+	 * TODO: Write comments
+	 */
+
+	bool EllipsoidalSampleBetween(const Scene *scene, ref<Sampler> sampler,
+			const PathVertex *pred1, const PathEdge *predEdge1,
+			const PathVertex *pred2, const PathEdge *predEdge2,
+			PathVertex *succ, PathEdge *succEdge1, PathEdge *succEdge2, Float &pathLengthTarget,
+			Float &value,
+			ETransportMode mode, bool russianRoulette, Spectrum *throughput);
+
+	void EllipsoidalSampleBetween(const Scene *scene, ref<Sampler> sampler,
+			const PathVertex *vsPred, PathVertex *vs, const PathEdge *vsEdge,
+			const PathVertex *vtPred, PathVertex *vt, const PathEdge *vtEdge,
+			const Path &emitterSubpath, const Path &sensorSubpath, const size_t &s, const size_t &t, bool &isEmitterLaser,
+			PathVertex *connectionVertex, PathEdge *connectionEdge1, PathEdge *connectionEdge2, Float &pathLengthTarget, Float &currentPathLength,
+			Float &EllipticPathWeight, Float &corrWeight, const Spectrum &value, Spectrum &total_value, Spectrum &meanSpectrum,
+			Float *sampleDecompositionValue, Float *l_sampleDecompositionValue, Float *temp, Point2 samplePos, Ellipsoid *m_ellipsoid,
+			ETransportMode mode, BDPTWorkResult *wr);
 
 	/**
 	 * \brief Sample the next vertex in a random walk using the default
@@ -570,6 +592,9 @@ struct MTS_EXPORT_BIDIR PathVertex {
 
 	/// Return the type associated with this vertex
 	inline EVertexType getType() const { return (EVertexType) type; }
+
+	size_t getShapeIndex() const;
+	size_t getPrimIndex() const;
 
 	/**
 	 * \brief Return the position associated with this vertex

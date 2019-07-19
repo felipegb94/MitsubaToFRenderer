@@ -37,7 +37,10 @@ BDPTWorkResult::BDPTWorkResult(const BDPTConfiguration &conf,
 	m_decompositionMinBound = conf.m_decompositionMinBound;
 	m_decompositionBinWidth = conf.m_decompositionBinWidth;
 	m_decompositionType = conf.m_decompositionType;
+	m_combineBDPTAndElliptic = conf.m_combineBDPTAndElliptic;
+	m_isldSampling = conf.m_isldSampling;
 	m_frames = conf.m_frames;
+	m_subSamples = conf.m_subSamples;
 
 	pathLengthSampler = conf.pathLengthSampler;
 
@@ -143,7 +146,9 @@ void BDPTWorkResult::load(Stream *stream) {
 	m_decompositionMinBound = stream->readFloat();
 	m_decompositionMaxBound = stream->readFloat();
 	m_decompositionBinWidth = stream->readFloat();
+	m_isldSampling = stream->readBool();
 	m_frames = stream->readSize();
+	m_subSamples = stream->readSize();
 
 	m_forceBounces = stream->readBool();
 	m_sBounces = stream->readUInt();
@@ -163,7 +168,9 @@ void BDPTWorkResult::save(Stream *stream) const {
 	stream->writeFloat(m_decompositionMinBound);
 	stream->writeFloat(m_decompositionMaxBound);
 	stream->writeFloat(m_decompositionBinWidth);
+	stream->writeBool(m_isldSampling);
 	stream->writeSize(m_frames);
+	stream->writeSize(m_subSamples);
 
 	stream->writeBool(m_forceBounces);
 	stream->writeUInt(m_sBounces);

@@ -21,6 +21,9 @@
 #define __MITSUBA_RENDER_TRIACCEL_H_
 
 #include <mitsuba/render/trimesh.h>
+#include <mitsuba/render/sampler.h>
+#include <vector>
+#include <math.h>
 
 MTS_NAMESPACE_BEGIN
 
@@ -56,6 +59,11 @@ struct TriAccel {
 	/// Fast ray-triangle intersection test
 	FINLINE bool rayIntersect(const Ray &ray, Float mint, Float maxt,
 		Float &u, Float &v, Float &t) const;
+
+	inline Float getIntersectionCost() const {
+		return 7292.0f; //Adithya: Do not know what this is, using the value from Jarabo's code for BVH building
+	}
+
 };
 
 inline int TriAccel::load(const Point &A, const Point &B, const Point &C) {

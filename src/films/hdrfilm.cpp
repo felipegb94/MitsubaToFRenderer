@@ -220,7 +220,6 @@ public:
 		std::string componentFormat = boost::to_lower_copy(
 			props.getString("componentFormat", "float16"));
 
-		//		if (m_decompositionType != Film::ESteadyState){
 		if (m_frames != 1){
 			if(pixelFormats.size() > 1){
 				Log(EError, "Pixel format should not be specified! RGB format is auto-applied to all Frames");
@@ -467,7 +466,7 @@ public:
 					*target++ += *source++ * weight;
 				target += 2;
 			}
-        }
+		}
 	}
 
 	bool develop(const Point2i &sourceOffset, const Vector2i &size,
