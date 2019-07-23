@@ -69,11 +69,11 @@ struct BDPTConfiguration {
 	unsigned int m_sBounces;
 	unsigned int m_tBounces;
 
-	ref<PathLengthSampler> pathLengthSampler;
+	// ref<PathLengthSampler> pathLengthSampler;
 
-	bool m_forceBounces;
-	unsigned int m_sBounces;
-	unsigned int m_tBounces;
+	// bool m_forceBounces;
+	// unsigned int m_sBounces;
+	// unsigned int m_tBounces;
 
 	inline BDPTConfiguration() { }
 
