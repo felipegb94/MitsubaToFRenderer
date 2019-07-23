@@ -256,16 +256,22 @@ public:
 		m_config.cropSize = film->getCropSize();
 		m_config.sampleCount = sampleCount;
 		m_config.dump();
+		std::cout << "check0" << std::endl;
 
 		ref<BDPTProcess> process = new BDPTProcess(job, queue, m_config);
 		m_process = process;
-
+		std::cout << "check1" << std::endl;
 		process->bindResource("scene", sceneResID);
+		std::cout << "check2" << std::endl;
 		process->bindResource("sensor", sensorResID);
+		std::cout << "check3" << std::endl;
 		process->bindResource("sampler", samplerResID);
+		std::cout << "check4" << std::endl;
 		scheduler->schedule(process);
+		std::cout << "check5" << std::endl;
 
 		scheduler->wait(process);
+		std::cout << "check6" << std::endl;
 		m_process = NULL;
 		process->develop();
 
