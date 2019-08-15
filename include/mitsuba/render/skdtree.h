@@ -20,9 +20,11 @@
 #if !defined(__MITSUBA_RENDER_SKDTREE_H_)
 #define __MITSUBA_RENDER_SKDTREE_H_
 
+#include <mitsuba/render/bvh.h>
 #include <mitsuba/render/shape.h>
 #include <mitsuba/render/sahkdtree3.h>
 #include <mitsuba/render/triaccel.h>
+#include <mitsuba/render/sampler.h>
 
 #if defined(MTS_KD_CONSERVE_MEMORY)
 #if defined(MTS_HAS_COHERENT_RT)
@@ -40,6 +42,84 @@
 MTS_NAMESPACE_BEGIN
 
 typedef const Shape * ConstShapePtr;
+
+
+struct BBTree{
+	AABB *m_aabb;
+	size_t m_currentNode;
+	size_t m_maxNodes;
+
+	size_t *m_triangleRepetition;
+	AABB *m_aabbTriangle;
+
+	BBTree(const size_t& max_depth, const size_t& primCount){
+		m_currentNode = 0;
+		m_maxNodes = pow(2, max_depth) + 1;
+		m_aabb = new AABB[m_maxNodes];
+		m_triangleRepetition = new size_t[primCount];
+		m_aabbTriangle		 = new AABB[primCount];
+		memset(m_triangleRepetition, 0, primCount*sizeof(size_t));
+	}
+
+	~BBTree(){
+		delete [] m_aabb;
+	}
+
+	inline void print(const size_t& index) const{
+		if(!(index < m_maxNodes) )
+			SLog(EError, "Trying to access index: %i, when the maxNode index is %i", index, m_maxNodes);
+		cout << "AABB" "[" << "min=" << m_aabb[index].min.toString() << ", max=" << m_aabb[index].max.toString();
+	}
+
+	inline void goLeft(){
+		m_currentNode = 2 * m_currentNode + 1;
+	}
+
+	inline void goRight(){
+		m_currentNode = 2 * m_currentNode + 2;
+	}
+
+	inline void goParent(){
+		m_currentNode = (m_currentNode - 1) >> 1;
+	}
+
+	inline void goRightSibling(){
+		if(m_currentNode%2 == 0)
+			SLog(EError, "goSibling called for root node or Right Node");
+		m_currentNode++;
+	}
+
+	inline void reset(){
+		m_currentNode = 0;
+	}
+
+	inline AABB getAABB(size_t index) const{
+		if(!(index < m_maxNodes) )
+			SLog(EError, "Trying to access index: %i, when the maxNode index is %i", index, m_maxNodes);
+		return m_aabb[index];
+	}
+
+
+	inline AABB getCurrentAABB() const{
+		return m_aabb[m_currentNode];
+	}
+
+	/// Expand the bounding box of the m_currentNode to contain another point
+	inline void expandBy(const Point &p) {
+		m_aabb[m_currentNode].expandBy(p);
+	}
+
+	/// Expand the bounding box by another Boundingbox
+	inline void expandBy(const AABB &aabb) {
+		m_aabb[m_currentNode].expandBy(aabb);
+	}
+
+	/// Expand the bounding box to contain bounding boxes of the childen
+	inline void expandByChildren() {
+		m_aabb[m_currentNode].expandBy(m_aabb[2 * m_currentNode + 1]);
+		m_aabb[m_currentNode].expandBy(m_aabb[2 * m_currentNode + 2]);
+	}
+};
 
 /**
  * \brief SAH KD-tree acceleration data structure for fast ray-triangle
@@ -74,6 +154,7 @@ class MTS_EXPORT_RENDER ShapeKDTree : public SAHKDTree3D<ShapeKDTree> {
 	friend class SingleScatter;
 
 public:
+
 	// =============================================================
 	//! @{ \name Initialization and tree construction
 	// =============================================================
@@ -94,12 +175,30 @@ public:
 		return m_shapeMap[m_shapeMap.size()-1];
 	}
 
+	inline SizeType getMaxKDDepth() const{
+		return m_maxDepth;
+	}
+
 	/// Return an axis-aligned bounding box containing all primitives
 	inline const AABB &getAABB() const { return m_aabb; }
 
 	/// Build the kd-tree (needs to be called before tracing any rays)
 	void build();
 
+	/* comment appropriately*/
+	bool ellipsoidIntersect(Ellipsoid* e, Float &value, Ray &ray, Intersection &its, ref<Sampler> sampler) const;
+
+	bool ellipsoidParseKDTree(const KDNode* node, size_t& index, Ellipsoid* e, Float &value, ref<Sampler> sampler, void *temp) const;
+
+	bool ellipsoidParseKDTreeDFS(const KDNode* node, size_t& index, Ellipsoid* e, Float &value, ref<Sampler> sampler, void *temp) const;
+
+	bool ellipsoidParseBVH_DFS(Ellipsoid* e, Float &value, ref<Sampler> sampler, void *temp) const;
+
+	bool ellipsoidParseKDTreeFlattened(const KDNode* node, size_t& index, Ellipsoid* e, Float &value, ref<Sampler> sampler, void *temp) const;
+
+	bool ellipsoidParseIntersectingTriangles(Ellipsoid* e, Float &value, ref<Sampler> sampler, void *temp) const;
+
+	void fillInlinePositionsAndLocations(Float P[][3], const Float &splitValue, const int &axis, const bool &direction) const;
 	//! @}
 	// =============================================================
 
@@ -337,6 +436,100 @@ protected:
 	}
 
 	/**
+	 */
+	template<bool BarycentricPos> FINLINE void fillEllipticIntersectionRecord(Ray &ray, const void *temp, Intersection &its) const {
+		const IntersectionCache *cache = reinterpret_cast<const IntersectionCache *>(temp);
+		const Shape *shape = m_shapes[cache->shapeIndex];
+		if (m_triangleFlag[cache->shapeIndex]) {
+			const TriMesh *trimesh = static_cast<const TriMesh *>(shape);
+			const Triangle &tri = trimesh->getTriangles()[cache->primIndex];
+			const Point *vertexPositions = trimesh->getVertexPositions();
+			const Normal *vertexNormals = trimesh->getVertexNormals();
+			const Point2 *vertexTexcoords = trimesh->getVertexTexcoords();
+			const Color3 *vertexColors = trimesh->getVertexColors();
+			const TangentSpace *vertexTangents = trimesh->getUVTangents();
+			const Vector b(1 - cache->u - cache->v, cache->u, cache->v);
+
+			const uint32_t idx0 = tri.idx[0], idx1 = tri.idx[1], idx2 = tri.idx[2];
+			const Point &p0 = vertexPositions[idx0];
+			const Point &p1 = vertexPositions[idx1];
+			const Point &p2 = vertexPositions[idx2];
+
+			if (BarycentricPos)
+				its.p = p0 * b.x + p1 * b.y + p2 * b.z;
+			else
+				SLog(EError, "Only barycentric code works");
+
+			Vector side1(p1-p0), side2(p2-p0);
+			Normal faceNormal(cross(side1, side2));
+			Float length = faceNormal.length();
+			if (!faceNormal.isZero())
+				faceNormal /= length;
+
+			if (EXPECT_NOT_TAKEN(vertexTangents)) {
+				const TangentSpace &ts = vertexTangents[cache->primIndex];
+				its.dpdu = ts.dpdu;
+				its.dpdv = ts.dpdv;
+			} else {
+				its.dpdu = side1;
+				its.dpdv = side2;
+			}
+
+			if (EXPECT_TAKEN(vertexNormals)) {
+				const Normal
+					&n0 = vertexNormals[idx0],
+					&n1 = vertexNormals[idx1],
+					&n2 = vertexNormals[idx2];
+
+				its.shFrame.n = normalize(n0 * b.x + n1 * b.y + n2 * b.z);
+
+				/* Ensure that the geometric & shading normals face the same direction */
+				if (dot(faceNormal, its.shFrame.n) < 0)
+					faceNormal = -faceNormal;
+			} else {
+				its.shFrame.n = faceNormal;
+			}
+			its.geoFrame = Frame(faceNormal);
+
+			if (EXPECT_TAKEN(vertexTexcoords)) {
+				const Point2 &t0 = vertexTexcoords[idx0];
+				const Point2 &t1 = vertexTexcoords[idx1];
+				const Point2 &t2 = vertexTexcoords[idx2];
+				its.uv = t0 * b.x + t1 * b.y + t2 * b.z;
+			} else {
+				its.uv = Point2(b.y, b.z);
+			}
+
+			if (EXPECT_NOT_TAKEN(vertexColors)) {
+				const Color3 &c0 = vertexColors[idx0],
+							 &c1 = vertexColors[idx1],
+							 &c2 = vertexColors[idx2];
+				Color3 result(c0 * b.x + c1 * b.y + c2 * b.z);
+				its.color.fromLinearRGB(result[0], result[1],
+					result[2], Spectrum::EReflectance);
+			}
+
+			its.shape = trimesh;
+			its.hasUVPartials = false;
+			its.primIndex = cache->primIndex;
+			its.instance = NULL;
+	//		its.time = ray.time;
+		}else{
+			SLog(EError,"Not implemented error");
+		}
+
+		computeShadingFrame(its.shFrame.n, its.dpdu, its.shFrame);
+		ray.d = normalize(its.p - ray.o);
+		its.wi = its.toLocal(-ray.d);
+	}
+
+	void printBBTree(const KDNode* node, const size_t& index) const;
+
+	void printAllTriangles() const;
+
+	void buildBBTree(const KDNode* node);
+
+	/**
 	 * \brief After having found a unique intersection, fill a proper record
 	 * using the temporary information collected in \ref intersect()
 	 */
@@ -415,6 +608,7 @@ protected:
 
 			its.shape = trimesh;
 			its.hasUVPartials = false;
+			its.shapeIndex = cache->shapeIndex;
 			its.primIndex = cache->primIndex;
 			its.instance = NULL;
 			its.time = ray.time;
@@ -463,10 +657,14 @@ private:
 	std::vector<const Shape *> m_shapes;
 	std::vector<bool> m_triangleFlag;
 	std::vector<IndexType> m_shapeMap;
+	BBTree *m_BBTree;
+	BVH<TriAccel> *m_bvh;
+
 #if !defined(MTS_KD_CONSERVE_MEMORY)
 	TriAccel *m_triAccel;
 #endif
 };
+
 
 MTS_NAMESPACE_END
 

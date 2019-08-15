@@ -6,7 +6,9 @@ endif()
 set(INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include/mitsuba/render)
 set(HDRS
   ${INCLUDE_DIR}/bsdf.h
+  ${INCLUDE_DIR}/bvh.h
   ${INCLUDE_DIR}/common.h
+  ${INCLUDE_DIR}/ellipsoid.h
   ${INCLUDE_DIR}/emitter.h
   ${INCLUDE_DIR}/film.h
   ${INCLUDE_DIR}/fwd.h
@@ -20,6 +22,7 @@ set(HDRS
   ${INCLUDE_DIR}/mipmap.h
   ${INCLUDE_DIR}/noise.h
   ${INCLUDE_DIR}/particleproc.h
+  ${INCLUDE_DIR}/pathlengthsampler.h
   ${INCLUDE_DIR}/phase.h
   ${INCLUDE_DIR}/pathlengthsampler.h
   ${INCLUDE_DIR}/photon.h
@@ -54,6 +57,7 @@ set(HDRS
 set(SRCS
   bsdf.cpp
   common.cpp
+  ellipsoid.cpp
   emitter.cpp
   film.cpp
   gatherproc.cpp
@@ -65,6 +69,7 @@ set(SRCS
   medium.cpp
   noise.cpp
   particleproc.cpp
+  pathlengthsampler.cpp
   phase.cpp
   photon.cpp
   pathlengthsampler.cpp

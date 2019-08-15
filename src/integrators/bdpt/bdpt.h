@@ -49,16 +49,31 @@ struct BDPTConfiguration {
 	Vector2i cropSize;
 	int rrDepth;
 	Film::EDecompositionType m_decompositionType;
+	bool m_combineBDPTAndElliptic;
 	Float m_decompositionMinBound;
 	Float m_decompositionMaxBound;
 	Float m_decompositionBinWidth;
+	bool m_isldSampling;
+
+	// adaptive sampling
+	bool m_isAdaptive;
+	Float m_adapMaxError, m_adapQuantile, m_adapPValue, m_adapAverageLuminance;
+	int m_adapMaxSampleFactor;
+
 	size_t m_frames;
+	size_t m_subSamples;
 
 	ref<PathLengthSampler> pathLengthSampler;
 
 	bool m_forceBounces;
 	unsigned int m_sBounces;
 	unsigned int m_tBounces;
+
+	// ref<PathLengthSampler> pathLengthSampler;
+
+	// bool m_forceBounces;
+	// unsigned int m_sBounces;
+	// unsigned int m_tBounces;
 
 	inline BDPTConfiguration() { }
 
@@ -72,6 +87,7 @@ struct BDPTConfiguration {
 		cropSize = Vector2i(stream);
 		rrDepth = stream->readInt();
 		m_decompositionType = (Film::EDecompositionType) stream->readUInt();
+		m_combineBDPTAndElliptic  = stream->readBool();
 		m_decompositionMinBound   = stream->readFloat();
 		m_decompositionMaxBound   = stream->readFloat();
 		m_decompositionBinWidth   = stream->readFloat();
@@ -81,8 +97,17 @@ struct BDPTConfiguration {
 			if (maxDepth < m_decompositionMinBound)
 				SLog(EError, "maxDepth of BDPT is less than the minimum bound; Rendering is futile");
 		}
-		m_frames = stream->readSize();
+		m_isldSampling = stream->readBool();
 
+		m_isAdaptive   			= stream->readBool();
+		m_adapMaxError 			= stream->readFloat();
+		m_adapQuantile 			= stream->readFloat();
+		m_adapPValue 			= stream->readFloat();
+		m_adapAverageLuminance 	= stream->readFloat();
+		m_adapMaxSampleFactor	= stream->readInt();
+
+		m_frames = stream->readSize();
+		m_subSamples = stream->readSize();
 		m_forceBounces = stream->readBool();
 		m_sBounces = stream->readUInt();
 		m_tBounces = stream->readUInt();
@@ -98,10 +123,21 @@ struct BDPTConfiguration {
 		cropSize.serialize(stream);
 		stream->writeInt(rrDepth);
 		stream->writeUInt(m_decompositionType);
+		stream->writeBool(m_combineBDPTAndElliptic);
 		stream->writeFloat(m_decompositionMinBound);
 		stream->writeFloat(m_decompositionMaxBound);
 		stream->writeFloat(m_decompositionBinWidth);
-		stream->writeSize(m_frames);
+		stream->writeBool(m_isldSampling);
+
+        stream->writeBool(m_isAdaptive);
+		stream->writeFloat(m_adapMaxError);
+		stream->writeFloat(m_adapQuantile);
+		stream->writeFloat(m_adapPValue);
+		stream->writeFloat(m_adapAverageLuminance);
+		stream->writeInt(m_adapMaxSampleFactor);
+
+        stream->writeSize(m_frames);
+		stream->writeSize(m_subSamples);
 
 		stream->writeBool(m_forceBounces);
 		stream->writeUInt(m_sBounces);
@@ -117,6 +153,8 @@ struct BDPTConfiguration {
 			decompositionType = "transient";
 		} else if (m_decompositionType == Film::EBounce) {
 			decompositionType = "bounce";
+		} else if (m_decompositionType == Film::ETransientEllipse) {
+			decompositionType = "transientellipse";
 		}
 
 		SLog(EDebug, "Bidirectional path tracer configuration:");
@@ -131,13 +169,26 @@ struct BDPTConfiguration {
 		SLog(EDebug, "   Block size                  : %i", blockSize);
 		SLog(EDebug, "   Number of samples           : " SIZE_T_FMT, sampleCount);
 		SLog(EDebug, "   decomposition type 		 : %s", decompositionType.c_str());
+		SLog(EDebug, "   Combine BDPT and Elliptic?  : %s",
+				m_combineBDPTAndElliptic ? "yes" : "no");
 		SLog(EDebug, "   decomposition min bound	 : %f", m_decompositionMinBound);
 		SLog(EDebug, "   decomposition max bound	 : %f", m_decompositionMaxBound);
 		SLog(EDebug, "   decomposition bin width 	 : %f", m_decompositionBinWidth);
+		SLog(EDebug, "   is ldSampling Enabled	   	 : %s",
+				m_isldSampling ? "yes" : "no");
+		SLog(EDebug, "   is adaptiveSampling Enabled : %s",
+						m_isAdaptive ? "yes" : "no");
+		SLog(EDebug, "   adapMaxError		    	 : %f", m_adapMaxError);
+		SLog(EDebug, "   m_adapQuantile		    	 : %f", m_adapQuantile);
+		SLog(EDebug, "   m_adapPValue		    	 : %f", m_adapPValue);
+		SLog(EDebug, "   m_adapAverageLuminance		 : %f", m_adapAverageLuminance);
+		SLog(EDebug, "   m_adapMaxSampleFactor		 : %i", m_adapMaxSampleFactor);
+
 		SLog(EDebug, "   number of frames	   	     : %i", m_frames);
-		SLog(EDebug, "   Force Bounces		 	 : %i", m_forceBounces);
-		SLog(EDebug, "   S Bounce number		 : %i", m_sBounces);
-		SLog(EDebug, "   T Bounce number		 : %i", m_tBounces);
+		SLog(EDebug, "   number of subsamples		 : %i", m_subSamples);
+		SLog(EDebug, "   Force Bounces		 	 	 : %i", m_forceBounces);
+		SLog(EDebug, "   S Bounce number		 	 : %i", m_sBounces);
+		SLog(EDebug, "   T Bounce number		 	 : %i", m_tBounces);
 
 		#if BDPT_DEBUG == 1
 			SLog(EDebug, "   Show weighted contributions : %s", showWeighted ? "yes" : "no");

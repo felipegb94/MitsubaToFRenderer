@@ -206,16 +206,35 @@ public:
 		size_t nCores = scheduler->getCoreCount();
 
 		m_config.m_decompositionType 	    = film->getDecompositionType();
+		m_config.m_combineBDPTAndElliptic   = film->combineBDPTAndElliptic();
 		m_config.m_decompositionMinBound 	= film->getDecompositionMinBound();
 		m_config.m_decompositionMaxBound 	= film->getDecompositionMaxBound();
 		m_config.m_decompositionBinWidth    = film->getDecompositionBinWidth();
+		m_config.m_isldSampling 			= film->isldSampling();
+
+		m_config.m_isAdaptive   			= film->isAdaptive();
+		m_config.m_adapMaxError 			= film->getAdapMaxError();
+		m_config.m_adapQuantile 			= film->getAdapQuantile();
+		m_config.m_adapPValue 				= film->getAdapPValue();
+		m_config.m_adapAverageLuminance 	= film->getAdapAverageLuminance();
+		m_config.m_adapMaxSampleFactor 		= film->getAdapMaxSampleFactor();
+
+
 		m_config.m_frames = film->getFrames();
+		m_config.m_subSamples = film->getSubSamples();
 
 		m_config.m_forceBounces = film->getForceBounces();
 		m_config.m_sBounces  	= film->getSBounces();
 		m_config.m_tBounces 	= film->getTBounces();
 
 		m_config.pathLengthSampler = film->getPathLengthSampler();
+
+
+		// m_config.m_forceBounces = film->getForceBounces();
+		// m_config.m_sBounces  	= film->getSBounces();
+		// m_config.m_tBounces 	= film->getTBounces();
+
+		// m_config.pathLengthSampler = film->getPathLengthSampler();
 
 
 		if (m_config.maxDepth!=-1 && m_config.m_decompositionType == Film::EBounce){
@@ -229,24 +248,30 @@ public:
 		Log(EDebug, "Size of data structures: PathVertex=%i bytes, PathEdge=%i bytes",
 			(int) sizeof(PathVertex), (int) sizeof(PathEdge));
 
-		Log(EInfo, "Starting render job (%ix%i, " SIZE_T_FMT " samples, " SIZE_T_FMT
+		Log(EInfo, "Starting render job (%ix%i, " SIZE_T_FMT " samples, " SIZE_T_FMT " sub-samples, " SIZE_T_FMT
 			" %s, " SSE_STR ") ..", film->getCropSize().x, film->getCropSize().y,
-			sampleCount, nCores, nCores == 1 ? "core" : "cores");
+			sampleCount, film->getSubSamples(), nCores, nCores == 1 ? "core" : "cores");
 
 		m_config.blockSize = scene->getBlockSize();
 		m_config.cropSize = film->getCropSize();
 		m_config.sampleCount = sampleCount;
 		m_config.dump();
+		std::cout << "check0" << std::endl;
 
 		ref<BDPTProcess> process = new BDPTProcess(job, queue, m_config);
 		m_process = process;
-
+		std::cout << "check1" << std::endl;
 		process->bindResource("scene", sceneResID);
+		std::cout << "check2" << std::endl;
 		process->bindResource("sensor", sensorResID);
+		std::cout << "check3" << std::endl;
 		process->bindResource("sampler", samplerResID);
+		std::cout << "check4" << std::endl;
 		scheduler->schedule(process);
+		std::cout << "check5" << std::endl;
 
 		scheduler->wait(process);
+		std::cout << "check6" << std::endl;
 		m_process = NULL;
 		process->develop();
 

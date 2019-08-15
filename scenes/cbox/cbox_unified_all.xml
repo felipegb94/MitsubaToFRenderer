@@ -1,30 +1,45 @@
 <?xml version='1.0' encoding='utf-8'?>
 
 <scene version="0.5.0">
+
 	<integrator type="bdpt">
-		<integer name="maxDepth" value="7"/>
+		<!-- maxDepth is the integer number of light bounces that will be rendered. 
+				* maxDepth=1 only light directly coming from a light source is rendered
+				* maxDepth=2 direct illumination is rendered, no indirect
+				* maxDepth > 2 direct + k bounce indirect illumination is rendered -->
+		<integer name="maxDepth" value="2"/>
 		<boolean name="sampleDirect" value="false"/>
 	</integrator>
+
 	<sensor type="perspective">
+
+		<!-- Anything before near clip or after far clip distance is not displayed -->
+		<float name="nearClip" value="10"/>
 		<float name="farClip" value="2800"/>
+
 		<float name="focusDistance" value="1000"/>
 		<float name="fov" value="39.3077"/>
 		<string name="fovAxis" value="x"/>
-		<float name="nearClip" value="10"/>
-		<transform name="toWorld">
 
-			<lookat target="278, 273, -799" origin="278, 273, -800" up="0, 1, 0"/>
+		<transform name="toWorld">
+		<!-- lookat transformation: 
+				* origin: specifies the coordinates of the camera/emitter origin (position)
+				* target: is the point the camera/emitter will look at
+				* up (optional): determines the "upward" direction in the final rendered scene.
+				-->
+			<lookat origin="278, 273, -800" target="278, 273, -799"  up="0, 1, 0"/>
 		</transform>
 
 		<sampler type="ldsampler">
 			<integer name="sampleCount" value="$samples"/>
 		</sampler>
 
+		<!-- <spectrum name="spectrumProperty" value="360:0, 361:0, 515:0, 516:0, 517:0, 671:0, 672:0, 673:0, 800:0, 810:1, 830:1, 850:1, 870:0"/> -->
 		<film type="hdrfilm">
             <boolean name="banner" value="false"/>
 
-			<integer name="height" value="512"/>
-			<integer name="width" value="512"/>
+			<integer name="height" value="256"/>
+			<integer name="width" value="256"/>
 			<string name="decomposition" value="$decomposition"/>
 			<float name="minBound" value="$tMin"/>
 			<float name="maxBound" value="$tMax"/>
@@ -36,8 +51,9 @@
 
 		</film>
 	</sensor>
+
 	<bsdf type="diffuse" id="box">
-		<spectrum name="reflectance" value="400:0.343, 404:0.445, 408:0.551, 412:0.624, 416:0.665, 420:0.687, 424:0.708, 428:0.723, 432:0.715, 436:0.71, 440:0.745, 444:0.758, 448:0.739, 452:0.767, 456:0.777, 460:0.765, 464:0.751, 468:0.745, 472:0.748, 476:0.729, 480:0.745, 484:0.757, 488:0.753, 492:0.75, 496:0.746, 500:0.747, 504:0.735, 508:0.732, 512:0.739, 516:0.734, 520:0.725, 524:0.721, 528:0.733, 532:0.725, 536:0.732, 540:0.743, 544:0.744, 548:0.748, 552:0.728, 556:0.716, 560:0.733, 564:0.726, 568:0.713, 572:0.74, 576:0.754, 580:0.764, 584:0.752, 588:0.736, 592:0.734, 596:0.741, 600:0.74, 604:0.732, 608:0.745, 612:0.755, 616:0.751, 620:0.744, 624:0.731, 628:0.733, 632:0.744, 636:0.731, 640:0.712, 644:0.708, 648:0.729, 652:0.73, 656:0.727, 660:0.707, 664:0.703, 668:0.729, 672:0.75, 676:0.76, 680:0.751, 684:0.739, 688:0.724, 692:0.73, 696:0.74, 700:0.737"/>
+		<spectrum name="reflectance" value="400:0.343, 404:0.445, 408:0.551, 412:0.624, 416:0.665, 420:0.687, 424:0.708, 428:0.723, 432:0.715, 436:0.71, 440:0.745, 444:0.758, 448:0.739, 452:0.767, 456:0.777, 460:0.765, 464:0.751, 468:0.745, 472:0.748, 476:0.729, 480:0.745, 484:0.757, 488:0.753, 492:0.75, 496:0.746, 500:0.747, 504:0.735, 508:0.732, 512:0.739, 516:0.734, 520:0.725, 524:0.721, 528:0.733, 532:0.725, 536:0.732, 540:0.743, 544:0.744, 548:0.748, 552:0.728, 556:0.716, 560:0.733, 564:0.726, 568:0.713, 572:0.74, 576:0.754, 580:0.764, 584:0.752, 588:0.736, 592:0.734, 596:0.741, 600:0.74, 604:0.732, 608:0.745, 612:0.755, 616:0.751, 620:0.744, 624:0.731, 628:0.733, 632:0.744, 636:0.731, 640:0.712, 644:0.708, 648:0.729, 652:0.73, 656:0.727, 660:0.707, 664:0.703, 668:0.729, 672:0.75, 676:0.76, 680:0.751, 684:0.739, 688:0.724, 692:0.73, 696:0.74, 700:0.737, 830:0.737"/>
 	</bsdf>
 
 	<bsdf type="diffuse" id="white">
@@ -56,28 +72,47 @@
 		<spectrum name="reflectance" value="400:0.78, 500:0.78, 600:0.78, 700:0.78"/>
 	</bsdf>
 
+	<!-- <emitter type="point"> -->
+		<!-- <spectrum name="intensity" value="400:0, 500:0, 600:0, 690:0, 700:1000000"/> -->
+		<!-- <spectrum name="intensity" value="10000"/> -->
+		
+		<!-- Use either position or toWorld to specify the position of the emitter-->		
+		<!-- <transform name="toWorld"> -->
+		<!-- lookat transformation: 
+				* origin: specifies the coordinates of the camera/emitter origin (position)
+				* target: is the point the camera/emitter will look at
+				* up (optional): determines the "upward" direction in the final rendered scene.
+				-->
+			<!-- <lookat origin="278, 273, -801" target="278, 273, -798" /> -->
+		<!-- </transform> -->
+	<!-- </emitter> -->
+
 	<shape type="obj">
 		<string name="filename" value="meshes/cbox_luminaire.obj"/>
 		<transform name="toWorld">
-			<translate x="0" y="-0.5" z="0"/>
+			<translate x="0" y="-0.5" z="-200"/>
 		</transform>
 
 		<ref id="light"/>
 
 		<emitter type="area">
-			<spectrum name="radiance" value="400:0, 500:8, 600:15.6, 700:18.4"/>
-		</emitter>
+			<!-- <spectrum name="radiance" value="400:0, 500:8, 600:15.6, 700:18.4"/> -->
+			<spectrum name="radiance" value="400:0, 500:0, 600:00, 690:0, 800:0, 810:0, 811:0, 812:0, 829:0, 830:1, 831:0, 848:0, 849:1, 850:0"/>
+		</emitter> 
+
+		<!-- <emitter type="area">
+			<spectrum name="radiance" value="400:0.001, 500:0.001, 600:0.001, 700:0.001, 800:1,  830:1000 "/>
+			<spectrum name="radiance" value="360:0.00, 361:0.00, 515:0.00, 516:0.00, 517:0.00, 671:1000.00, 672:1000.00, 673:0.00, 827:0.00, 828:000.00, 830:0000.00"/>
+		</emitter> -->
 	</shape>
 
 	<shape type="obj">
 		<string name="filename" value="meshes/cbox_floor.obj"/>
-
 		<ref id="white"/>
 	</shape>
 
 	<shape type="obj">
 		<string name="filename" value="meshes/cbox_ceiling.obj"/>
-
 		<ref id="white"/>
 	</shape>
 
@@ -88,13 +123,11 @@
 
 	<shape type="obj">
 		<string name="filename" value="meshes/cbox_greenwall.obj"/>
-
 		<ref id="green"/>
 	</shape>
 
 	<shape type="obj">
 		<string name="filename" value="meshes/cbox_redwall.obj"/>
-
 		<ref id="red"/>
 	</shape>
 
@@ -103,10 +136,11 @@
 
 		<ref id="box"/>
 	</shape>
-
+<!-- 
 	<shape type="obj">
 		<string name="filename" value="meshes/cbox_largebox.obj"/>
 
 		<ref id="box"/>
-	</shape>
+	</shape> -->
+
 </scene>

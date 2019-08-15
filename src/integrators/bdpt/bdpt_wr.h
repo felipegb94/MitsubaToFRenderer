@@ -117,6 +117,10 @@ public:
 		return m_lightImage.get();
 	}
 
+	inline Spectrum average() const {
+		return (m_block->average() + m_lightImage->average()) * 0.5;
+	}
+
 	/// Return the number of channels stored by the image block
 	inline int getChannelCount() const { return m_block->getChannelCount(); }
 
@@ -148,9 +152,11 @@ protected:
 	ref<ImageBlock> m_block, m_lightImage;
 public:
 	Film::EDecompositionType m_decompositionType;
+	bool m_combineBDPTAndElliptic;
 	Float m_decompositionMinBound;
 	Float m_decompositionMaxBound;
 	Float m_decompositionBinWidth;
+	bool m_isldSampling;
 	size_t m_frames;
 	size_t m_subSamples; // For elliptic sampling. Defaults to 1.
 

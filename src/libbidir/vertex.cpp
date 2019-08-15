@@ -18,6 +18,7 @@
 
 #include <mitsuba/bidir/path.h>
 #include <mitsuba/core/statistics.h>
+#include <mitsuba/render/ellipsoid.h> // To test ellipse code. FixMe to go throught the KDD tree
 
 MTS_NAMESPACE_BEGIN
 
@@ -31,6 +32,191 @@ void PathVertex::makeEndpoint(const Scene *scene, Float time, ETransportMode mod
 	degenerate = (mode == EImportance)
 		? scene->hasDegenerateEmitters() : scene->hasDegenerateSensor();
 }
+
+bool PathVertex::EllipsoidalSampleBetween(const Scene *scene, ref<Sampler> sampler,
+		const PathVertex *pred1, const PathEdge *predEdge1,
+		const PathVertex *pred2, const PathEdge *predEdge2,
+		PathVertex *succ, PathEdge *succEdge1, PathEdge *succEdge2, Float &pathLengthTarget,
+		Float &value,
+		ETransportMode mode, bool russianRoulette, Spectrum *throughput) {
+	SLog(EError, "Not implemented");
+	return false;
+}
+
+void PathVertex::EllipsoidalSampleBetween(const Scene *scene, ref<Sampler> sampler,
+		const PathVertex *vsPred, PathVertex *vs, const PathEdge *vsEdge,
+		const PathVertex *vtPred, PathVertex *vt, const PathEdge *vtEdge,
+		const Path &emitterSubpath, const Path &sensorSubpath, const size_t &s, const size_t &t, bool &isEmitterLaser,
+		PathVertex *connectionVertex, PathEdge *connectionEdge1, PathEdge *connectionEdge2, Float &pathLengthTarget, Float &currentPathLength,
+		Float &EllipticPathWeight, Float &corrWeight, const Spectrum &value, Spectrum &total_value, Spectrum &meanSpectrum,
+		Float *sampleDecompositionValue, Float *l_sampleDecompositionValue, Float *temp, Point2 samplePos, Ellipsoid *m_ellipsoid,
+		ETransportMode mode, BDPTWorkResult *wr){
+	Float miWeight;
+//	Float miWeight = 1.0/(s+t-1-isEmitterLaser);
+
+	int subSamples = wr->m_subSamples; //Need to read this part from hdrfilm, just like samples. It can be adaptive in the future based on miWeight
+	Spectrum cumulativeValue(0.0f);
+
+	if(mode != EImportance)
+		SLog(EError, "Ellipsoidal intersection called with sensor path");
+
+	bool islightSamplePath = vt->isSensorSample();
+
+	Ray ray;
+
+	EMeasure vsOriginal = vs->measure;
+	EMeasure vtOriginal = vt->measure;
+
+	memset(connectionEdge1, 0, sizeof(PathEdge));
+	memset(connectionVertex, 0, sizeof(PathVertex));
+	memset(connectionEdge2, 0, sizeof(PathEdge));
+
+	connectionEdge1->medium = (vsEdge == NULL) ? NULL : vsEdge->medium;
+
+//	Float totalPathLength = pathLengthTarget + currentPathLength;
+
+//	size_t binIndex = floor((totalPathLength - wr->m_decompositionMinBound)/(wr->m_decompositionBinWidth));
+
+	switch (type) {
+		case EEmitterSupernode: {
+			SLog(EError, "Ellipsoidal intersection called at emitter supernode. We do not have space to create additional node");
+		}
+		break;
+		case ESensorSupernode: {
+			SLog(EError, "Ellipsoidal intersection called at sensor supernode. We do not have space to create additional node");
+		}
+		break;
+		case ESensorSample: {
+			SLog(EError, "Ellipsoidal intersection called at sensor sample. We do not start from sensor path and should not have encountered this case");
+		}
+		break;
+		case EEmitterSample: {
+		}
+		case ESurfaceInteraction: {
+
+			const AABB aabbEntireScene = scene->getAABB();
+//			Float proposedDecompositionMaxBound = FLT_MIN;
+//
+//			// Focal points
+//			const Point &f1 = vs->getPosition();
+//			const Point &f2 = vt->getPosition();
+//			for(int i=0; i < 8; i++){
+//				const Point &corner = aabbEntireScene.getCorner(i);
+//				Float temp = distance(f1, corner) + distance(f2, corner);
+//				if(temp > proposedDecompositionMaxBound)
+//					proposedDecompositionMaxBound = temp;
+//			}
+//
+//			Float proposedDecompositionMinBound = fmax(currentPathLength + distance(f1, f2), wr->m_decompositionMinBound);
+//			proposedDecompositionMaxBound = fmin(currentPathLength+proposedDecompositionMaxBound, wr->m_decompositionMaxBound);
+//
+//			if(proposedDecompositionMaxBound < proposedDecompositionMinBound)
+//				return;
+//
+//			Float totalPathLength = wr->sampleRestrictedPathLengthTarget(proposedDecompositionMinBound, proposedDecompositionMaxBound, sampler);
+
+
+//			size_t binIndex = floor((totalPathLength - wr->m_decompositionMinBound)/(wr->m_decompositionBinWidth));
+
+			Float totalPathLength = pathLengthTarget + currentPathLength;
+
+
+			size_t binIndex = floor((totalPathLength - wr->m_decompositionMinBound)/(wr->m_decompositionBinWidth));
+//			pathLengthTarget = totalPathLength-currentPathLength;
+
+			m_ellipsoid->initialize(vs->getPosition(), vt->getPosition(), vs->getGeometricNormal(), vt->getGeometricNormal(), vs->getShapeIndex(), vt->getShapeIndex(), vs->getPrimIndex(), vt->getPrimIndex(), pathLengthTarget);
+			if(m_ellipsoid->isDegenerate()){
+				return;
+			}
+
+			ray.setOrigin(getIntersection().p);
+			Intersection &its = connectionVertex->getIntersection();
+
+			for(int i = 0; i < subSamples; i++){
+
+				vs->measure = vsOriginal;
+				vt->measure = vtOriginal;
+
+				EllipticPathWeight = 1.0f;
+				if(scene->ellipsoidIntersectAll(m_ellipsoid, EllipticPathWeight, ray, its, sampler)){
+					connectionVertex->type = PathVertex::ESurfaceInteraction;
+					connectionVertex->degenerate = !(its.getBSDF()->hasComponent(BSDF::ESmooth) ||
+							its.shape->isEmitter() || its.shape->isSensor());
+					int interactions = 0; // FIXME: can we do better than this?
+
+					if(!(connectionEdge1->pathConnectAndCollapse(scene, vsEdge, vs, connectionVertex, NULL, interactions)) || !(connectionEdge2->pathConnectAndCollapse(scene, connectionEdge1, connectionVertex, vt, vtEdge, interactions)))
+						continue;
+				}else{
+					continue;
+				}
+				miWeight = Path::miWeightElliptic(scene, emitterSubpath, connectionEdge1, connectionVertex, connectionEdge2,
+					sensorSubpath, s, t, false, true, sampler);
+//				cout << "miWeight:" << miWeight << "\n";
+				Spectrum currentValue(value);
+				currentValue *= vs->eval(scene, vsPred, connectionVertex, EImportance) *
+						connectionVertex->eval(scene, vs, vt, ERadiance) *
+						vt->eval(scene, vtPred, connectionVertex, ERadiance);
+
+				vs->measure = vt->measure = EArea;
+				currentValue *= connectionEdge1->evalCached(vs, connectionVertex, PathEdge::EGeneralizedGeometricTerm)*
+								connectionEdge2->evalCached(connectionVertex, vt, PathEdge::EGeneralizedGeometricTerm);
+
+//				currentValue *= EllipticPathWeight * wr->getSamplingWeight(proposedDecompositionMinBound, proposedDecompositionMaxBound, totalPathLength);
+				currentValue *= EllipticPathWeight * wr->getSamplingWeight(wr->m_decompositionMinBound, wr->m_decompositionMaxBound, totalPathLength);
+				if(currentValue.isZero())
+					continue;
+				if(islightSamplePath){
+					currentValue /= subSamples;
+					if (!vt->getSamplePosition(connectionVertex, samplePos))
+						continue;
+					if(wr->getModulationType() == PathLengthSampler::ENone){
+						//Place the currentValue in the appropriate time bin of the light image
+						currentValue.toLinearRGB(temp[0],temp[1],temp[2]);
+						l_sampleDecompositionValue[binIndex*SPECTRUM_SAMPLES+0] += temp[0] * miWeight;
+						l_sampleDecompositionValue[binIndex*SPECTRUM_SAMPLES+1] += temp[1] * miWeight;
+						l_sampleDecompositionValue[binIndex*SPECTRUM_SAMPLES+2] += temp[2] * miWeight;
+						wr->putLightSample(samplePos, l_sampleDecompositionValue);
+						meanSpectrum += currentValue * miWeight;
+						//reset the l_sampleDecompositionValue
+						l_sampleDecompositionValue[binIndex*SPECTRUM_SAMPLES+0] = 0;
+						l_sampleDecompositionValue[binIndex*SPECTRUM_SAMPLES+1] = 0;
+						l_sampleDecompositionValue[binIndex*SPECTRUM_SAMPLES+2] = 0;
+					}else{
+						wr->putLightSample(samplePos, currentValue * miWeight * corrWeight);
+					}
+				}else{
+					cumulativeValue += currentValue * miWeight;
+				}
+			}
+			if(!islightSamplePath && !cumulativeValue.isZero()){
+				cumulativeValue /= subSamples;
+
+				if(wr->getModulationType() == PathLengthSampler::ENone){
+					cumulativeValue.toLinearRGB(temp[0],temp[1],temp[2]);
+					sampleDecompositionValue[binIndex*SPECTRUM_SAMPLES+0] += temp[0];
+					sampleDecompositionValue[binIndex*SPECTRUM_SAMPLES+1] += temp[1];
+					sampleDecompositionValue[binIndex*SPECTRUM_SAMPLES+2] += temp[2];
+//					sampleDecompositionValue[binIndex*SPECTRUM_SAMPLES+0] += temp[0] * miWeight;
+//					sampleDecompositionValue[binIndex*SPECTRUM_SAMPLES+1] += temp[1] * miWeight;
+//					sampleDecompositionValue[binIndex*SPECTRUM_SAMPLES+2] += temp[2] * miWeight;
+					meanSpectrum += cumulativeValue * miWeight;
+				}else{
+					total_value += cumulativeValue * miWeight * corrWeight;
+				}
+			}
+
+		}
+		break;
+		case EMediumInteraction: {
+			SLog(EError, "Ellipsoidal intersection called with Medium interaction, which is not handled today");
+		}
+		break;
+		default:
+			SLog(EError, "Ellipsoidal intersection encountered an "
+				"unsupported vertex type (%i)!", type);
+	}
+}
+
 
 bool PathVertex::sampleNext(const Scene *scene, Sampler *sampler,
 		const PathVertex *pred, const PathEdge *predEdge,
@@ -328,8 +514,9 @@ int PathVertex::sampleSensor(const Scene *scene, Sampler *sampler,
 		(sensor->getType() & Sensor::EPositionSampleMapsToPixels) ? pixelSample
 		: apertureSample, &pixelPosition);
 
-	if (result.isZero())
+	if (result.isZero() && !(sensor->getType() & Sensor::ECodedOrtho)){
 		return 0;
+	}
 
 	weight[ERadiance] = result;
 	pdf[ERadiance] = pRec.pdf;
@@ -1207,6 +1394,36 @@ bool PathVertex::update(const Scene *scene, const PathVertex *pred,
 	weight[1-mode] *= weightBkw;
 
 	return true;
+}
+
+size_t PathVertex::getShapeIndex() const {
+	switch (type) {
+		case ESurfaceInteraction:
+			return getIntersection().shapeIndex;
+		case EMediumInteraction:
+			SLog(EError, "Cannot request prim index for volumetric case"); return -1;
+		case EEmitterSample:
+			return -1;
+		case ESensorSample:
+			return -1;
+		default:
+			return -1;
+	}
+}
+
+size_t PathVertex::getPrimIndex() const {
+	switch (type) {
+		case ESurfaceInteraction:
+			return getIntersection().primIndex;
+		case EMediumInteraction:
+			SLog(EError, "Cannot request prim index for volumetric case"); return -1;
+		case EEmitterSample:
+			return -1;
+		case ESensorSample:
+			return -1;
+		default:
+			return -1;
+	}
 }
 
 Point PathVertex::getPosition() const {
