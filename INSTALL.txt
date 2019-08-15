@@ -15,13 +15,23 @@ sudo apt-get upgrade
 # Needed to also install curl because of command used in future steps
 sudo apt-get install subversion git-core mercurial keychain openssh-client openssh-server g++ g++-multilib build-essential zip unzip p7zip-full python2.7 python-dev apt-file vim scons qt4-dev-tools libpng12-dev libjpeg8 libjpeg8-dev libpng3 libilmbase-dev libxerces-c-dev libglewmx1.6-dev libxxf86vm-dev libbz2-dev htop zlib1g-dev aptitude dkms gedit-plugins gedit-latex-plugin ntp gnome-terminal gimp gimp-ufraw ufraw ufraw-batch dcraw valgrind linux-tools-common smartmontools libapache2-mod-perl2 gnome-disk-utility libapache2-svn subversion-tools gnome-system-tools unrar xml-twig-tools linux-headers-$(uname -r) rsync inkscape irssi mutt s3cmd meshlab openexr libopenexr-dev openexr-viewers libgnome2-bin gparted ubuntu-restricted-extras uml-utilities gpick gnome-color-manager libfftw3-3 libfftw3-dev libboost1.58-all-dev pkg-config curl
 
+# NOTE: If you installed libboost1.58 or any version manually the python API for mitsuba will most likely not compile because it will not be able to find libboost_python. To fix this issue you will have to figure out the path for libboost_python (in my case it was /usr/local/lib) and modify the find_boost_python method in `data/scons/detect_python.py` to find the correct path to boost for python
+
+# (OPTIONAL) Install collada (needed if you want to enable mtsimport plugin)
+# Make sure that the collada paths are set in the config.py file
+#       COLLADAINCLUDE = ['/usr/include/collada-dom2.4', '/usr/include/collada-dom2.4/1.4']
+#       COLLADALIB     = ['collada-dom2.4-dp']
+# The above paths are different from latest mitsuba release. I got them from the development version in Github
+sudo apt-get install collada-dom2.4
 
 # Preparation for installations
 mkdir ~/Downloads
 mkdir ~/install_dirs
 echo -e 'PKG_CONFIG_PATH="/usr/local/lib/pkgconfig"' | sudo tee -a /etc/environment > /dev/null
 source /etc/environment
- 
+
+
+
 # Install and link eigen
 curl -L -o ~/Downloads/eigen-3.2.10.zip http://bitbucket.org/eigen/eigen/get/3.2.10.zip
 cd ~/install_dirs/
@@ -55,10 +65,11 @@ scons
 cd
 
 # Replace <INST_PATH> with your installation location
-echo -e 'mitsuba_plugin_dir="<INST_PATH>/MitsubaToFRenderer/dist/plugins"' | sudo tee -a /etc/environment > /dev/null
-sudo sed -e '/^PATH/s/"$/:<INST_PATH>\/MitsubaToFRenderer\/dist"/g' -i /etc/environment
+export MITSUBA_INST_PATH=/home/user/repos/MitsubaToFRenderer
+echo -e 'mitsuba_plugin_dir='${MITSUBA_INST_PATH}"/dist/plugins" | sudo tee -a /etc/environment > /dev/null
+sudo sed -e '/^PATH/s/"$/:\/home\/user\/repos\/MitsubaToFRenderer\/dist"/g' -i /etc/environment
 source /etc/environment
-echo "<INST_PATH>/MitsubaToFRenderer/dist" | sudo tee /etc/ld.so.conf.d/mitsuba.conf > /dev/null
+echo ${MITSUBA_INST_PATH}"/dist" | sudo tee /etc/ld.so.conf.d/mitsuba.conf > /dev/null
 sudo ldconfig
  
 # Add the following lines to your ~/.bashrc file so that you can run mitsuba from anywhere.
