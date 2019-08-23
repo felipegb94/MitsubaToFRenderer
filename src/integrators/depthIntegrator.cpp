@@ -49,7 +49,8 @@ public:
             return Spectrum( distance );
             // return Spectrum(1.0f - distance/m_maxDist) * m_color;
         }
-        return Spectrum(0.0f);
+        // If no intersection return a very large depth
+        return Spectrum(200.0f);
         // return m_color;
     }
 
