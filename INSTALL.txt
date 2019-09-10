@@ -7,7 +7,7 @@
 sudo apt-get update
 sudo apt-get upgrade
 # For ubuntu 18.04 libpng12-dev was dropped so we need to install libpng-dev instead
-# For ubuntu 18.04 libboost1.58-all-dev was not available so you have to download and install manually
+# For ubuntu 18.04 libboost1.58-all-dev was not available so you have to download and install manually (https://www.boost.org/doc/libs/1_58_0/more/getting_started/unix-variants.html)
 ## If you run into a compilation error regarding the bind function of boost, that might mean that you are using a version of boost that is too new.
 # For ubuntu 18.04 libpng3 is not available (need to test if only having libpng-dev works)
 # For ubuntu 18.04 libapache2-svn is now called libapache2-mod-svn
