@@ -13,6 +13,12 @@ sudo apt-get upgrade
 # For ubuntu 18.04 libapache2-svn is now called libapache2-mod-svn
 # Mitsuba needs OpenGL to be installed so we need to add opengl info below. 
 # Needed to also install curl because of command used in future steps
+
+# Installing OpenGL
+sudo apt-get install build-essential libgl1-mesa-dev  # safe for Ubuntu 18.04
+sudo apt-get install libglew-dev libsdl2-dev libsdl2-image-dev libglm-dev libfreetype6-dev  # safe for Ubuntu 18.04
+
+
 sudo apt-get install subversion git-core mercurial keychain openssh-client openssh-server g++ g++-multilib build-essential zip unzip p7zip-full python2.7 python-dev apt-file vim scons qt4-dev-tools libpng12-dev libjpeg8 libjpeg8-dev libpng3 libilmbase-dev libxerces-c-dev libglewmx1.6-dev libxxf86vm-dev libbz2-dev htop zlib1g-dev aptitude dkms gedit-plugins gedit-latex-plugin ntp gnome-terminal gimp gimp-ufraw ufraw ufraw-batch dcraw valgrind linux-tools-common smartmontools libapache2-mod-perl2 gnome-disk-utility libapache2-svn subversion-tools gnome-system-tools unrar xml-twig-tools linux-headers-$(uname -r) rsync inkscape irssi mutt s3cmd meshlab openexr libopenexr-dev openexr-viewers libgnome2-bin gparted ubuntu-restricted-extras uml-utilities gpick gnome-color-manager libfftw3-3 libfftw3-dev libboost1.58-all-dev pkg-config curl
 
 # NOTE: If you installed libboost1.58 or any version manually the python API for mitsuba will most likely not compile because it will not be able to find libboost_python. To fix this issue you will have to figure out the path for libboost_python (in my case it was /usr/local/lib) and modify the find_boost_python method in `data/scons/detect_python.py` to find the correct path to boost for python
