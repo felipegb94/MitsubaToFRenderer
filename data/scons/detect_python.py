@@ -42,12 +42,14 @@ def find_boost_python(version):
     libnames = [
         'boost_python-mt-py%s' % version,
         'boost_python-py%s' % version,
-        'boost_python' + ('3' if version.startswith('3') else '')
+        'boost_python' + ('3' if version.startswith('3') else ''),
+        'boost_python'
     ]
     basepaths = [
         '/usr/lib',
         '/usr/lib/%s-linux-gnu' % (os.uname()[4]),
-        '/usr/lib%i' % (struct.calcsize('P')*8)
+        '/usr/lib%i' % (struct.calcsize('P')*8),
+        '/usr/local/lib'
     ]
 
     for basepath in basepaths:
@@ -57,11 +59,13 @@ def find_boost_python(version):
     return None
 
 def detect_python():
-    pyver = ['2.6', '2.7', '3.0', '3.1', '3.2', '3.3', '3.4']
+    pyver = ['2.6', '2.7', '3.0', '3.1', '3.2', '3.3', '3.4', '3.5']
     pyenv = {}
 
     for version in pyver:
         pkgconfig = PkgConfig('python-%s' % version)
+        print(pkgconfig)
+
         version = version.replace('.', '')
         flags = []
         if 'Cflags' in pkgconfig:
@@ -71,6 +75,8 @@ def detect_python():
         if len(flags) == 0:
             continue
         boost_libname = find_boost_python(version)
+        print("detecting python")
+        print(boost_libname)
         if boost_libname == None:
             continue
         pyenv['PYTHON' + version + 'INCLUDE'] = []
