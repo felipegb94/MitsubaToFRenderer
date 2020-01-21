@@ -111,5 +111,7 @@ RUN apt-get install -y \
 # versions do not support python 2.7
 # I have only tested Mitsuba's python API with 2.7, but in the future we need to test
 # with more recent python versions
-RUN pip install numpy==1.16 openexr ipython==5.8 matplotlib==2.2
+RUN pip install numpy==1.16.5 matplotlib==2.2.4
+RUN pip install openexr
+RUN pip install ipython==5.7.0
 
